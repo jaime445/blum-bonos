@@ -1,0 +1,64 @@
+name: monitor-diario
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 08:00 Lima (UTC-5)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: monitor-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install google-api-python-client google-auth
+
+      - name: Descargar EEFF .md desde Drive
+        env:
+          GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+        run: python scripts/sincronizar_drive.py
+
+      - name: Noticias de emisores (últimos 7 días)
+        run: python scripts/noticias.py
+
+      - name: Generar monitor (docs/)
+        run: python scripts/generar_monitor.py datos docs
+
+      - name: Guardar datos del día
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitor-${{ github.run_number }}
+          path: |
+            docs/datos.json
+            noticias/
+          retention-days: 30
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: despliegue
+        uses: actions/deploy-pages@v4
