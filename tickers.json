@@ -1,0 +1,28 @@
+{
+  "_nota": "Ticker de Yahoo Finance por emisor (carpeta de config/emisores.json). 'verificar': ticker no confirmado, revisar en el log si sale sin datos. Emisores que no cotizan no aparecen.",
+  "tickers": {
+    "Banco de Crédito e Inversiones": {"ticker": "BCI.SN", "moneda": "CLP", "verificar": false},
+    "Banco de Bogotá": {"ticker": "BOGOTA.CL", "moneda": "COP", "verificar": true},
+    "Banco de Colombia": {"ticker": "CIB", "moneda": "USD", "verificar": true},
+    "Banco Mercantil del Norte": {"ticker": "GFNORTEO.MX", "moneda": "MXN", "verificar": false},
+    "Banco Inbursa Financiero": {"ticker": "GFINBURO.MX", "moneda": "MXN", "verificar": true},
+    "ING Bank N.V": {"ticker": "INGA.AS", "moneda": "EUR", "verificar": false},
+    "HSBC Holdings": {"ticker": "HSBC", "moneda": "USD", "verificar": false},
+    "Intercorp Financial Services": {"ticker": "IFS", "moneda": "USD", "verificar": false},
+    "Svenska Handelsbanken AB": {"ticker": "SHB-A.ST", "moneda": "SEK", "verificar": false},
+    "UBS AG": {"ticker": "UBS", "moneda": "USD", "verificar": false},
+    "Ares Capital": {"ticker": "ARCC", "moneda": "USD", "verificar": false},
+    "Barings BDC": {"ticker": "BBDC", "moneda": "USD", "verificar": false},
+    "Blackstone Secured Lend": {"ticker": "BXSL", "moneda": "USD", "verificar": false},
+    "HERCULES CAPITAL INC": {"ticker": "HTGC", "moneda": "USD", "verificar": false},
+    "Main Street Capital Corp": {"ticker": "MAIN", "moneda": "USD", "verificar": false},
+    "Morgan Stanley Direct Lending Fund": {"ticker": "MSDL", "moneda": "USD", "verificar": false},
+    "Oaktree Specialty Lending Corp": {"ticker": "OCSL", "moneda": "USD", "verificar": false},
+    "CELULOSA ARAUCO Y CONSTITUCION S.A": {"ticker": "ARAUCO.SN", "moneda": "CLP", "verificar": true},
+    "Inversiones CMPC SA": {"ticker": "CMPC.SN", "moneda": "CLP", "verificar": true},
+    "Enel Chile": {"ticker": "ENELCHILE.SN", "moneda": "CLP", "verificar": true},
+    "Enel Generación Chile S.A": {"ticker": "ENELGXCH.SN", "moneda": "CLP", "verificar": true},
+    "Falabella S.A": {"ticker": "FALABELLA.SN", "moneda": "CLP", "verificar": true},
+    "Sempra": {"ticker": "SRE", "moneda": "USD", "verificar": false}
+  }
+}

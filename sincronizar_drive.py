@@ -22,14 +22,27 @@ def servicio():
     return build("drive", "v3", credentials=creds, cache_discovery=False)
 
 
+CARPETA = "application/vnd.google-apps.folder"
+ACCESO = "application/vnd.google-apps.shortcut"
+
+
+def resolver(f):
+    """Si es un acceso directo a una carpeta, devuelve la carpeta real (id y tipo)."""
+    if f["mimeType"] == ACCESO:
+        d = f.get("shortcutDetails", {})
+        if d.get("targetMimeType") == CARPETA:
+            return {"id": d["targetId"], "name": f["name"], "mimeType": CARPETA}
+    return f
+
+
 def hijos(svc, carpeta_id):
     q = f"'{carpeta_id}' in parents and trashed = false"
     out, token = [], None
     while True:
-        r = svc.files().list(q=q, fields="nextPageToken, files(id, name, mimeType, modifiedTime)",
+        r = svc.files().list(q=q, fields="nextPageToken, files(id, name, mimeType, modifiedTime, shortcutDetails)",
                              pageSize=1000, supportsAllDrives=True, includeItemsFromAllDrives=True,
                              pageToken=token).execute()
-        out += r.get("files", [])
+        out += [resolver(f) for f in r.get("files", [])]
         token = r.get("nextPageToken")
         if not token:
             return out

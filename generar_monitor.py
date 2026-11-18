@@ -152,7 +152,7 @@ def indicadores(r):
 def historia(e):
     """Un registro por ano con EEFF AAAA.md en la carpeta del emisor."""
     out = []
-    carpeta = RAIZ / e["carpeta"]
+    carpeta = carpeta_de(e["carpeta"])
     if not carpeta.is_dir():
         return out
     for md in sorted(carpeta.glob("EEFF *.md")):
@@ -168,18 +168,49 @@ def historia(e):
     return sorted(out, key=lambda x: x["anio"])
 
 
+def clave(nombre):
+    """Nombre de carpeta/archivo sin diferencias de acentos (NFC/NFD), mayusculas, puntos ni espacios sobrantes."""
+    s = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode().lower().replace(".", "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def carpeta_de(nombre):
+    if not RAIZ.is_dir():
+        return RAIZ / nombre
+    exacta = RAIZ / nombre
+    if exacta.is_dir():
+        return exacta
+    for d in RAIZ.iterdir():
+        if d.is_dir() and clave(d.name) == clave(nombre):
+            return d
+    return exacta
+
+
+def archivo_de(carpeta, archivo):
+    """El archivo configurado, o cualquier EEFF 2025 .md de la carpeta si el nombre no coincide."""
+    if (carpeta / archivo).exists():
+        return carpeta / archivo
+    for f in sorted(carpeta.glob("*.md")):
+        if re.search(r"eeff.*2025", unicodedata.normalize("NFC", f.name).lower()):
+            return f
+    return carpeta / archivo
+
+
 def cargar():
     cfg = json.loads((BASE / "config" / "emisores.json").read_text(encoding="utf-8"))
     res = []
     for e in cfg["emisores"]:
         archivo = e.get("archivo", ARCHIVO_DEFECTO)
-        md = RAIZ / e["carpeta"] / archivo
+        md = archivo_de(carpeta_de(e["carpeta"]), archivo)
         if md.exists():
             r = extraer(md, e.get("reglas", {}))
             r["archivo"] = md.name
         else:
             r = {c: None for c in CAMPOS}
-            r.update({"estado": "pendiente", "_derivado": [], "archivo": None})
+            r.update({"estado": "pendiente", "_derivado": [], "archivo": None,
+                      "motivo": f"no existe '{archivo}' en la carpeta '{e['carpeta']}' de Drive"})
+        if r["estado"] == "pendiente" and "motivo" not in r:
+            r["motivo"] = "el archivo existe pero no tiene las filas de balance esperadas"
         r.update({"nombre": e["nombre"], "tipo": e["tipo"], "unidad": e["unidad"],
                   "carpeta": e["carpeta"], "slug": slug(e["nombre"])})
         r["indicadores"] = indicadores(r)
@@ -232,6 +263,12 @@ def pie(hoy):
             f"activos = pasivos + patrimonio. Indicadores calculados con las cifras de esta página (actualizado {hoy}).</p>")
 
 
+def pendientes_log(filas_):
+    for r in filas_:
+        if r["estado"] == "pendiente":
+            print(f"PENDIENTE: {r['nombre']} -> {r.get('motivo', '')}")
+
+
 def pagina_indice(filas_, hoy):
     cnt = {k: sum(1 for r in filas_ if r["estado"] == k) for k in BADGE}
     cuerpo = ""
@@ -242,14 +279,15 @@ def pagina_indice(filas_, hoy):
         ind = {n: (v, u) for n, v, u, _ in r["indicadores"]}
         roe = fmt_ind(*ind["ROE"]) if "ROE" in ind else "—"
         apal = fmt_ind(*ind["Pasivos / patrimonio"]) if "Pasivos / patrimonio" in ind else "—"
-        cuerpo += (f"<tr><td>{html.escape(r['tipo'])}</td><td><a href='emisores/{r['slug']}.html'>{html.escape(r['nombre'])}</a></td>"
+        marca = f" <span class='fte'>({html.escape(r.get('motivo', ''))})</span>" if r["estado"] == "pendiente" else ""
+        cuerpo += (f"<tr><td>{html.escape(r['tipo'])}</td><td><a href='emisores/{r['slug']}.html'>{html.escape(r['nombre'])}</a>{marca}</td>"
                    f"<td class='c'>{html.escape(r['unidad'])}</td><td class='n'>{celda('activos')}</td><td class='n'>{celda('patrimonio')}</td>"
                    f"<td class='n'>{roe}</td><td class='n'>{apal}</td><td class='c'>{BADGE[r['estado']]}</td></tr>")
     return f"""<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Monitor de emisores · Blum SAF</title><style>{CSS}</style></head><body>
 <header><div class="k">Blum SAF · Monitor de emisores</div><h1>Cierre 2025 por emisor</h1>
 <div class="m">{len(filas_)} emisores · {cnt['verificado']} verificados · {cnt['revisar']} por revisar · {cnt['parcial']} parciales · {cnt['pendiente']} pendientes · actualizado {hoy}</div>
-<div class="nav" style="margin-top:12px"><a href="#resumen">Resumen</a><a href="#noticias">Noticias</a><a href="bci.html">Dashboard BCI</a></div></header>
+<div class="nav" style="margin-top:12px"><a href="#resumen">Resumen</a><a href="#noticias">Noticias</a><a href="bci.html">Dashboard BCI</a><a href="acciones.html">Acciones</a></div></header>
 <main>
 <h2 id="resumen">Resumen por emisor</h2>
 <div class="box"><table><tr><th>Tipo</th><th>Emisor (clic para ver el análisis)</th><th class="c">Unidad</th><th class="n">Activos</th>
@@ -387,6 +425,7 @@ def pagina_emisor(r, noticias, hoy):
 
 if __name__ == "__main__":
     datos = cargar()
+    pendientes_log(datos)
     noticias = cargar_noticias()
     hoy = datetime.now().strftime("%d-%m-%Y")
     (SALIDA / "emisores").mkdir(parents=True, exist_ok=True)
